@@ -1,0 +1,77 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        configuration: [Release]
+
+    env:
+      SOLUTION: VMProtect-Tools.sln
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore "${{ env.SOLUTION }}"
+
+      - name: Build
+        run: msbuild "${{ env.SOLUTION }}" /m /restore /p:Configuration=${{ matrix.configuration }} /p:Platform="Any CPU"
+
+      - name: Upload HWID
+        uses: actions/upload-artifact@v4
+        with:
+          name: HWID-${{ matrix.configuration }}
+          path: HWID/bin/${{ matrix.configuration }}/
+          if-no-files-found: warn
+
+      - name: Upload LicenseGen
+        uses: actions/upload-artifact@v4
+        with:
+          name: LicenseGen-${{ matrix.configuration }}
+          path: LicenseGen/bin/${{ matrix.configuration }}/
+          if-no-files-found: warn
+
+      - name: Upload HWID-Locked App Example
+        uses: actions/upload-artifact@v4
+        with:
+          name: HWID-Locked-App-Example-${{ matrix.configuration }}
+          path: HWID-Locked App Example/bin/${{ matrix.configuration }}/
+          if-no-files-found: warn
+
+      - name: Zip untuk release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "HWID/bin/Release/*" -DestinationPath HWID.zip
+          Compress-Archive -Path "LicenseGen/bin/Release/*" -DestinationPath LicenseGen.zip
+          Compress-Archive -Path "HWID-Locked App Example/bin/Release/*" -DestinationPath HWID-Locked-App-Example.zip
+
+      - name: Buat GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            HWID.zip
+            LicenseGen.zip
+            HWID-Locked-App-Example.zip
