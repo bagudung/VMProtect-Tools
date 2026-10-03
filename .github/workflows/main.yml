@@ -36,7 +36,7 @@ jobs:
         run: nuget restore "${{ env.SOLUTION }}"
 
       - name: Build
-        run: msbuild "${{ env.SOLUTION }}" /m /restore /p:Configuration=${{ matrix.configuration }} /p:Platform="Any CPU"
+        run: msbuild "${{ env.SOLUTION }}" /m /restore /p:Configuration=${{ matrix.configuration }} /p:Platform="Any CPU" /p:TargetFrameworkVersion=v4.8
 
       - name: Upload HWID
         uses: actions/upload-artifact@v4
